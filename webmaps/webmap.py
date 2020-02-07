@@ -1,4 +1,4 @@
-from folium import Map, Marker, Icon, FeatureGroup, Popup, CircleMarker, GeoJson
+from folium import Map, Marker, Icon, FeatureGroup, Popup, CircleMarker, GeoJson, LayerControl
 import webbrowser
 import os
 import random
@@ -9,10 +9,11 @@ MAP_FILENAME: str = "map.html"
 
 def generate_web_map_html(filename: str) -> None:
     map = Map(location=[48.7767982, -121.8109970])
-    feature_group = FeatureGroup(name="My map")
-    updated_feature_group = add_markers_for_volcanoes(feature_group)
-    updated_feature_group = add_geojson_layer(updated_feature_group)
-    map.add_child(updated_feature_group)
+    volcanoes_feature_group = get_volcanoes_feature_group()
+    population_feature_group = get_population_feature_group()
+    map.add_child(volcanoes_feature_group)
+    map.add_child(population_feature_group)
+    map.add_child(LayerControl())
     map.save(filename)
 
 
@@ -33,7 +34,8 @@ def get_elevation_color(elevation: float) -> str:
         return 'red'
 
 
-def add_markers_for_volcanoes(feature_group: FeatureGroup) -> FeatureGroup:
+def get_volcanoes_feature_group() -> FeatureGroup:
+    feature_group = FeatureGroup(name="Volcanoes")
     data = pandas.read_csv("./Volcanoes_USA.txt")
     latitudes = list(data['LAT'])
     longitudes = list(data['LON'])
@@ -46,12 +48,14 @@ def add_markers_for_volcanoes(feature_group: FeatureGroup) -> FeatureGroup:
     return feature_group
 
 
-def add_geojson_layer(feature_group: FeatureGroup) -> FeatureGroup:
-    feature_group.add_child(GeoJson(data=open('world.json', mode='r', encoding='utf-8-sig').read(),
-                                    style_function=lambda x: {
-                                        'fillColor': 'green' if x['properties']['POP2005'] < 10000000
-                                        else 'orange' if 10000000 <= x['properties']['POP2005'] < 20000000 else 'red'}))
-    return feature_group
+def get_population_feature_group() -> FeatureGroup:
+    population_feature_group = FeatureGroup('Population')
+    population_feature_group.add_child(GeoJson(data=open('world.json', mode='r', encoding='utf-8-sig').read(),
+                                               style_function=lambda x: {
+                                                   'fillColor': 'green' if x['properties']['POP2005'] < 10000000
+                                                   else 'orange' if 10000000 <= x['properties'][
+                                                       'POP2005'] < 20000000 else 'red'}))
+    return population_feature_group
 
 
 def open_webmap(filename: str) -> None:

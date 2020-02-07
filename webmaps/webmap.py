@@ -1,5 +1,6 @@
-from folium import Map, Marker, Icon, FeatureGroup, Popup
-import webbrowser, os
+from folium import Map, Marker, Icon, FeatureGroup, Popup, CircleMarker, GeoJson
+import webbrowser
+import os
 import random
 import pandas
 
@@ -7,9 +8,10 @@ MAP_FILENAME: str = "map.html"
 
 
 def generate_web_map_html(filename: str) -> None:
-    map = Map(location=[51.7522202, -1.25596])
+    map = Map(location=[48.7767982, -121.8109970])
     feature_group = FeatureGroup(name="My map")
     updated_feature_group = add_markers_for_volcanoes(feature_group)
+    updated_feature_group = add_geojson_layer(updated_feature_group)
     map.add_child(updated_feature_group)
     map.save(filename)
 
@@ -32,13 +34,23 @@ def get_elevation_color(elevation: float) -> str:
 
 
 def add_markers_for_volcanoes(feature_group: FeatureGroup) -> FeatureGroup:
-    data = pandas.read_csv("Volcanoes_USA.txt")
+    data = pandas.read_csv("./Volcanoes_USA.txt")
     latitudes = list(data['LAT'])
     longitudes = list(data['LON'])
     elevation = list(data['ELEV'])
     for lat, lon, elev in zip(latitudes, longitudes, elevation):
-        feature_group.add_child(Marker(location=[lat, lon], popup=Popup(str(elev) + "m", parse_html=True),
-                                       icon=Icon(get_elevation_color(elev))))
+        feature_group.add_child(
+            CircleMarker(location=(lat, lon), color='grey', weight=1, radius=6,
+                         popup=Popup(str(elev) + "m", parse_html=True),
+                         fill_color=get_elevation_color(elev)))
+    return feature_group
+
+
+def add_geojson_layer(feature_group: FeatureGroup) -> FeatureGroup:
+    feature_group.add_child(GeoJson(data=open('world.json', mode='r', encoding='utf-8-sig').read(),
+                                    style_function=lambda x: {
+                                        'fillColor': 'green' if x['properties']['POP2005'] < 10000000
+                                        else 'orange' if 10000000 <= x['properties']['POP2005'] < 20000000 else 'red'}))
     return feature_group
 
 
@@ -49,4 +61,3 @@ def open_webmap(filename: str) -> None:
 if __name__ == "__main__":
     generate_web_map_html(MAP_FILENAME)
     open_webmap(MAP_FILENAME)
-    # os.remove(MAP_FILENAME)
